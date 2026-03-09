@@ -1,4 +1,4 @@
-# sAT Protocol Specification v0.1.0
+# sAT Protocol
 
 sAT Protocol (satproto) is a decentralized social networking protocol based on static sites.
 Each user owns a static website storing all their data in encrypted JSON stores.
@@ -39,54 +39,38 @@ Only users in the owner's follow list can decrypt it.
 
 ### Keys
 
-- Each user generates an **X25519 keypair**. 
-  The public key is published in the discovery document. 
+- Each user generates an **X25519 keypair**.
+  The public key is published in the discovery document.
   The private key is stored in the browser's localStorage.
-- Each epoch has a random **content key** (256-bit symmetric key) used to
-  encrypt the data store with XChaCha20-Poly1305.
+- A random **content key** (256-bit symmetric key) encrypts
+  the data store with XChaCha20-Poly1305.
 - The content key is encrypted per-follower using libsodium sealed boxes
   (`crypto_box_seal` with the follower's X25519 public key).
 
-### Epochs
-
-An epoch is a period between follow list changes. Each epoch has its own
-content key.
-
-```
-sat/
-  current_epoch        # plain text file containing the current epoch number
-  epochs/
-    0/
-      data.json.enc      # Encrypted data store with epoch 0's content key
-      keys/
-        bob.example.com.json    # epoch 0 content key encrypted for Bob
-        carol.example.com.json  # epoch 0 content key encrypted for Carol
-    1/
-      data.json.enc      # Encrypted data store with epoch 1's content key
-      keys/
-        bob.example.com.json    # Carol unfollowed — no key for her
-```
+### Key Rotation (Unfollow)
 
 When the user unfollows someone:
-1. Increment epoch number
-2. Generate new content key
-3. New posts go into the new epoch's database
-4. Encrypt the new content key for all remaining followers
-5. The unfollowed user retains access to old epoch data but cannot read new content
+1. Generate a new content key
+2. Re-encrypt the entire data store with the new key
+3. Re-create key envelopes for all remaining followers
+4. The unfollowed user's old key no longer decrypts anything
 
 ### Decryption Flow
 
 When Bob visits Alice's site:
 1. Fetch Alice's `/.well-known/satproto.json` to get her public key and sat_root
-2. Fetch `sat/current_epoch` to find the latest epoch
-3. For each epoch, fetch `sat/epochs/{n}/keys/bob.example.com.json`
-4. Decrypt the content key using Bob's private key
-5. Fetch `sat/epochs/{n}/data.json.enc`
-6. Decrypt the file using the content key
+2. Fetch `sat/keys/bob.example.com.json`
+3. Decrypt the content key using Bob's private key
+4. Fetch `sat/posts/index.json` to get the list of post IDs
+5. Fetch and decrypt individual posts from `sat/posts/{id}.json.enc`
 
 ## Data Schema
 
-Each epoch's encrypted store contains a JSON array of post objects:
+Each post is stored as an individually encrypted file. The post index
+(`sat/posts/index.json`) is a plaintext JSON file listing post IDs
+newest-first, allowing clients to lazily load only recent posts.
+
+A post object:
 
 ```json
 [
@@ -155,11 +139,10 @@ When viewing a post, the client scans followed users' posts for entries where
 ## Publishing
 
 The WASM client publishes posts by:
-1. Creating a new post record
-2. Adding it to the current epoch's post database
-3. Re-encrypting the database with the current epoch's content key
-4. Pushing the updated `data.json.enc` via the GitHub Contents API
-   (or equivalent for other git hosts)
+1. Creating a new post with a unique ID
+2. Encrypting the post JSON with the content key
+3. Pushing the encrypted post as `sat/posts/{id}.json.enc` via the GitHub Contents API
+4. Updating `sat/posts/index.json` to include the new post ID
 
 The GitHub personal access token is stored in localStorage alongside the
 private key.
@@ -171,14 +154,13 @@ private key.
   .well-known/
     satproto.json           # Discovery + profile + public key
   sat/
-    current_epoch           # Current epoch number (plain text)
+    posts/
+      index.json            # Post ID list (plaintext, newest first)
+      {id}.json.enc         # Individually encrypted post files
     follows/
       index.json            # Follow list (unencrypted)
-    epochs/
-      {n}/
-        data.json.enc         # Encrypted JSON data store
-        keys/
-          {domain}.json     # Encrypted content key per follower
+    keys/
+      {domain}.json         # Encrypted content key per follower
   app/
     index.html              # WASM client shell
     satproto_bg.wasm        # Compiled WASM module

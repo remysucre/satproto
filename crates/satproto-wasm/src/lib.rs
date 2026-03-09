@@ -5,23 +5,34 @@ mod publish;
 
 use satproto_core::schema::Post;
 
+const DEFAULT_FEED_LIMIT: usize = 50;
+
 /// Initialize the client. Call once on page load.
 #[wasm_bindgen]
 pub async fn init() -> Result<(), JsValue> {
-    // Check if we have a keypair in localStorage, generate one if not
     let window = web_sys::window().ok_or("no window")?;
     let storage = window
         .local_storage()
         .map_err(|_| "no localStorage")?
         .ok_or("no localStorage")?;
 
-    if storage.get_item("satproto_secret_key").map_err(|_| "storage error")?.is_none() {
+    if storage
+        .get_item("satproto_secret_key")
+        .map_err(|_| "storage error")?
+        .is_none()
+    {
         let (sk, pk) = satproto_core::crypto::generate_keypair();
         storage
-            .set_item("satproto_secret_key", &satproto_core::crypto::to_base64(&sk))
+            .set_item(
+                "satproto_secret_key",
+                &satproto_core::crypto::to_base64(&sk),
+            )
             .map_err(|_| "failed to store secret key")?;
         storage
-            .set_item("satproto_public_key", &satproto_core::crypto::to_base64(&pk))
+            .set_item(
+                "satproto_public_key",
+                &satproto_core::crypto::to_base64(&pk),
+            )
             .map_err(|_| "failed to store public key")?;
         web_sys::console::log_1(&"Generated new keypair".into());
     }
@@ -52,7 +63,7 @@ pub async fn load_feed(my_domain: &str) -> Result<JsValue, JsValue> {
     let (sk, _pk) = get_keypair()?;
 
     for domain in &follow_list.follows {
-        match fetch::fetch_user_posts(domain, my_domain, &sk).await {
+        match fetch::fetch_user_posts(domain, my_domain, &sk, DEFAULT_FEED_LIMIT).await {
             Ok(posts) => all_posts.push(posts),
             Err(e) => {
                 web_sys::console::warn_1(
@@ -79,9 +90,10 @@ pub async fn load_replies(
     let (sk, _pk) = get_keypair()?;
 
     for domain in &follow_list.follows {
-        match fetch::fetch_user_posts(domain, my_domain, &sk).await {
+        match fetch::fetch_user_posts(domain, my_domain, &sk, DEFAULT_FEED_LIMIT).await {
             Ok(posts) => {
-                let replies = satproto_core::feed::filter_replies(&posts, post_id, post_author);
+                let replies =
+                    satproto_core::feed::filter_replies(&posts, post_id, post_author);
                 all_posts.extend(replies);
             }
             Err(_) => {}
@@ -141,9 +153,8 @@ pub async fn follow_user(my_domain: &str, target_domain: &str) -> Result<(), JsV
         .try_into()
         .map_err(|_| JsValue::from_str("invalid public key length"))?;
 
-    // Get current epoch and content key
-    let epoch = fetch::fetch_current_epoch(my_domain).await?;
-    let content_key = get_content_key(&storage, epoch)?;
+    // Get content key
+    let content_key = get_content_key(&storage)?;
 
     // Encrypt our content key for the target user
     let sealed = satproto_core::crypto::seal_content_key(&content_key, &target_pk);
@@ -158,7 +169,7 @@ pub async fn follow_user(my_domain: &str, target_domain: &str) -> Result<(), JsV
     publish::push_text_file(
         &github_token,
         &github_repo,
-        &format!("sat/epochs/{}/keys/{}.json", epoch, target_domain),
+        &format!("sat/keys/{}.json", target_domain),
         &envelope_json,
     )
     .await?;
@@ -182,8 +193,8 @@ pub async fn follow_user(my_domain: &str, target_domain: &str) -> Result<(), JsV
     Ok(())
 }
 
-/// Unfollow a user. Bumps epoch, generates new content key, re-creates
-/// key envelopes for remaining followers only.
+/// Unfollow a user. Generates new content key, re-encrypts all posts,
+/// re-creates key envelopes for remaining followers only.
 #[wasm_bindgen]
 pub async fn unfollow_user(my_domain: &str, target_domain: &str) -> Result<(), JsValue> {
     let window = web_sys::window().ok_or("no window")?;
@@ -201,9 +212,52 @@ pub async fn unfollow_user(my_domain: &str, target_domain: &str) -> Result<(), J
         .map_err(|_| "storage error")?
         .ok_or("no GitHub repo")?;
 
-    // Get current epoch
-    let old_epoch = fetch::fetch_current_epoch(my_domain).await?;
-    let new_epoch = old_epoch + 1;
+    // Get old content key to decrypt existing posts
+    let old_content_key = get_content_key(&storage)?;
+
+    // Fetch post index
+    let index = fetch::fetch_post_index(my_domain)
+        .await
+        .unwrap_or(satproto_core::schema::PostIndex { posts: Vec::new() });
+
+    // Generate new content key
+    let new_content_key = satproto_core::crypto::generate_content_key();
+    storage
+        .set_item(
+            "satproto_content_key",
+            &satproto_core::crypto::to_base64(&new_content_key),
+        )
+        .map_err(|_| "failed to store content key")?;
+
+    // Re-encrypt each post with new key
+    for post_id in &index.posts {
+        // Fetch encrypted post, decrypt with old key, re-encrypt with new key
+        let url = format!("https://{}/sat/posts/{}.json.enc", my_domain, post_id);
+        let resp = match gloo_net::http::Request::get(&url).send().await {
+            Ok(r) if r.ok() => r,
+            _ => continue,
+        };
+        let encrypted = match resp.binary().await {
+            Ok(b) => b,
+            Err(_) => continue,
+        };
+        let decrypted = match satproto_core::crypto::decrypt_data(&encrypted, &old_content_key) {
+            Ok(d) => d,
+            Err(_) => continue,
+        };
+        let re_encrypted =
+            match satproto_core::crypto::encrypt_data(&decrypted, &new_content_key) {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+        let _ = publish::push_binary_file(
+            &github_token,
+            &github_repo,
+            &format!("sat/posts/{}.json.enc", post_id),
+            &re_encrypted,
+        )
+        .await;
+    }
 
     // Update follows list (remove target)
     let mut follow_list = fetch::fetch_follow_list(my_domain).await?;
@@ -211,30 +265,7 @@ pub async fn unfollow_user(my_domain: &str, target_domain: &str) -> Result<(), J
     let follows_json = serde_json::to_string(&follow_list)
         .map_err(|e| JsValue::from_str(&format!("serialize follows: {}", e)))?;
 
-    // Generate new content key for new epoch
-    let new_content_key = satproto_core::crypto::generate_content_key();
-    storage
-        .set_item(
-            &format!("satproto_content_key_{}", new_epoch),
-            &satproto_core::crypto::to_base64(&new_content_key),
-        )
-        .map_err(|_| "failed to store content key")?;
-
-    // Create empty encrypted store for new epoch
-    let store = satproto_core::db::PostStore::new();
-    let encrypted = satproto_core::db::encrypt_store(&store, &new_content_key)
-        .map_err(|e| JsValue::from_str(&format!("encrypt: {}", e)))?;
-
-    // Push new epoch store
-    publish::push_binary_file(
-        &github_token,
-        &github_repo,
-        &format!("sat/epochs/{}/data.json.enc", new_epoch),
-        &encrypted,
-    )
-    .await?;
-
-    // Create key envelopes for remaining followers
+    // Re-create key envelopes for remaining followers
     for follower_domain in &follow_list.follows {
         match fetch::fetch_profile(follower_domain).await {
             Ok(profile) => {
@@ -255,27 +286,22 @@ pub async fn unfollow_user(my_domain: &str, target_domain: &str) -> Result<(), J
                 let _ = publish::push_text_file(
                     &github_token,
                     &github_repo,
-                    &format!("sat/epochs/{}/keys/{}.json", new_epoch, follower_domain),
+                    &format!("sat/keys/{}.json", follower_domain),
                     &envelope_json,
                 )
                 .await;
             }
             Err(e) => {
                 web_sys::console::warn_1(
-                    &format!("Failed to fetch profile for {}: {:?}", follower_domain, e).into(),
+                    &format!("Failed to fetch profile for {}: {:?}", follower_domain, e)
+                        .into(),
                 );
             }
         }
     }
 
-    // Update epoch number and follows list
-    publish::push_text_file(
-        &github_token,
-        &github_repo,
-        "sat/current_epoch",
-        &new_epoch.to_string(),
-    )
-    .await?;
+    // TODO: delete old key envelope for unfollowed user (GitHub API delete)
+
     publish::push_text_file(
         &github_token,
         &github_repo,
@@ -284,7 +310,7 @@ pub async fn unfollow_user(my_domain: &str, target_domain: &str) -> Result<(), J
     )
     .await?;
 
-    web_sys::console::log_1(&format!("Unfollowed {} — epoch bumped to {}", target_domain, new_epoch).into());
+    web_sys::console::log_1(&format!("Unfollowed {}", target_domain).into());
     Ok(())
 }
 
@@ -295,8 +321,7 @@ pub async fn get_follows(my_domain: &str) -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(&follow_list.follows).map_err(|e| e.into())
 }
 
-/// Bootstrap a new Satellite site. Generates content key for epoch 0,
-/// creates empty encrypted store, and pushes initial files to GitHub.
+/// Bootstrap a new Satellite site. Generates content key and pushes initial files.
 #[wasm_bindgen]
 pub async fn bootstrap(domain: &str) -> Result<(), JsValue> {
     let window = web_sys::window().ok_or("no window")?;
@@ -319,19 +344,16 @@ pub async fn bootstrap(domain: &str) -> Result<(), JsValue> {
         .map_err(|_| "storage error")?
         .ok_or("no public key - call init() first")?;
 
-    // Generate content key for epoch 0
+    // Generate content key
     let content_key = satproto_core::crypto::generate_content_key();
-    let content_key_b64 = satproto_core::crypto::to_base64(&content_key);
     storage
-        .set_item("satproto_content_key_0", &content_key_b64)
+        .set_item(
+            "satproto_content_key",
+            &satproto_core::crypto::to_base64(&content_key),
+        )
         .map_err(|_| "failed to store content key")?;
 
-    // Create empty encrypted store
-    let store = satproto_core::db::PostStore::new();
-    let encrypted = satproto_core::db::encrypt_store(&store, &content_key)
-        .map_err(|e| JsValue::from_str(&format!("encrypt: {}", e)))?;
-
-    // Push files to GitHub
+    // Push initial files
     let files: Vec<(&str, String)> = vec![
         (
             ".well-known/satproto.json",
@@ -345,10 +367,13 @@ pub async fn bootstrap(domain: &str) -> Result<(), JsValue> {
             })
             .to_string(),
         ),
-        ("sat/current_epoch", "0".to_string()),
         (
             "sat/follows/index.json",
             serde_json::json!({ "follows": [] }).to_string(),
+        ),
+        (
+            "sat/posts/index.json",
+            serde_json::json!({ "posts": [] }).to_string(),
         ),
     ];
 
@@ -356,24 +381,15 @@ pub async fn bootstrap(domain: &str) -> Result<(), JsValue> {
         publish::push_text_file(&github_token, &github_repo, path, content).await?;
     }
 
-    // Push the encrypted store as binary
-    publish::push_binary_file(
-        &github_token,
-        &github_repo,
-        "sat/epochs/0/data.json.enc",
-        &encrypted,
-    )
-    .await?;
-
     web_sys::console::log_1(&"Satellite site bootstrapped!".into());
     Ok(())
 }
 
-fn get_content_key(storage: &web_sys::Storage, epoch: u32) -> Result<[u8; 32], JsValue> {
+fn get_content_key(storage: &web_sys::Storage) -> Result<[u8; 32], JsValue> {
     let b64 = storage
-        .get_item(&format!("satproto_content_key_{}", epoch))
+        .get_item("satproto_content_key")
         .map_err(|_| "storage error")?
-        .ok_or_else(|| JsValue::from_str(&format!("no content key for epoch {}", epoch)))?;
+        .ok_or_else(|| JsValue::from_str("no content key"))?;
     let bytes = satproto_core::crypto::from_base64(&b64)
         .map_err(|e| JsValue::from_str(&format!("decode content key: {}", e)))?;
     bytes

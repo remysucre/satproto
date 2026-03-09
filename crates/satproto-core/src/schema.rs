@@ -32,6 +32,11 @@ pub struct Post {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostIndex {
+    pub posts: Vec<String>, // post IDs, newest first
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyEnvelope {
     pub recipient: String,      // domain of the recipient
     pub encrypted_key: String,  // base64-encoded sealed box

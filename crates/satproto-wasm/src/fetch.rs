@@ -1,6 +1,6 @@
 use gloo_net::http::Request;
 use satproto_core::crypto;
-use satproto_core::schema::{FollowList, KeyEnvelope, Post, Profile};
+use satproto_core::schema::{FollowList, KeyEnvelope, Post, PostIndex, Profile};
 use wasm_bindgen::JsValue;
 
 /// Fetch a user's follow list.
@@ -27,33 +27,25 @@ pub async fn fetch_profile(domain: &str) -> Result<Profile, JsValue> {
         .map_err(|e| JsValue::from_str(&format!("parse profile: {}", e)))
 }
 
-/// Fetch the current epoch number for a user.
-pub async fn fetch_current_epoch(domain: &str) -> Result<u32, JsValue> {
-    let url = format!("https://{}/sat/current_epoch", domain);
+/// Fetch the post index for a user.
+pub async fn fetch_post_index(domain: &str) -> Result<PostIndex, JsValue> {
+    let url = format!("https://{}/sat/posts/index.json", domain);
     let resp = Request::get(&url)
         .send()
         .await
-        .map_err(|e| JsValue::from_str(&format!("fetch epoch: {}", e)))?;
-    let text = resp
-        .text()
+        .map_err(|e| JsValue::from_str(&format!("fetch post index: {}", e)))?;
+    resp.json::<PostIndex>()
         .await
-        .map_err(|e| JsValue::from_str(&format!("read epoch: {}", e)))?;
-    text.trim()
-        .parse::<u32>()
-        .map_err(|e| JsValue::from_str(&format!("parse epoch: {}", e)))
+        .map_err(|e| JsValue::from_str(&format!("parse post index: {}", e)))
 }
 
-/// Fetch and decrypt the key envelope for us from a given user and epoch.
+/// Fetch and decrypt the key envelope for us from a given user.
 async fn fetch_key_envelope(
     domain: &str,
-    epoch: u32,
     my_domain: &str,
     my_secret: &[u8; 32],
 ) -> Result<[u8; 32], JsValue> {
-    let url = format!(
-        "https://{}/sat/epochs/{}/keys/{}.json",
-        domain, epoch, my_domain
-    );
+    let url = format!("https://{}/sat/keys/{}.json", domain, my_domain);
     let resp = Request::get(&url)
         .send()
         .await
@@ -68,40 +60,48 @@ async fn fetch_key_envelope(
         .map_err(|e| JsValue::from_str(&format!("decrypt key: {}", e)))
 }
 
-/// Fetch and decrypt the encrypted data store for a given user and epoch.
-async fn fetch_encrypted_store(domain: &str, epoch: u32) -> Result<Vec<u8>, JsValue> {
-    let url = format!("https://{}/sat/epochs/{}/data.json.enc", domain, epoch);
+/// Fetch and decrypt a single post.
+async fn fetch_post(
+    domain: &str,
+    post_id: &str,
+    content_key: &[u8; 32],
+) -> Result<Post, JsValue> {
+    let url = format!("https://{}/sat/posts/{}.json.enc", domain, post_id);
     let resp = Request::get(&url)
         .send()
         .await
-        .map_err(|e| JsValue::from_str(&format!("fetch store: {}", e)))?;
-    resp.binary()
+        .map_err(|e| JsValue::from_str(&format!("fetch post: {}", e)))?;
+    let encrypted = resp
+        .binary()
         .await
-        .map_err(|e| JsValue::from_str(&format!("read store: {}", e)))
+        .map_err(|e| JsValue::from_str(&format!("read post: {}", e)))?;
+    let decrypted = crypto::decrypt_data(&encrypted, content_key)
+        .map_err(|e| JsValue::from_str(&format!("decrypt post: {}", e)))?;
+    serde_json::from_slice(&decrypted)
+        .map_err(|e| JsValue::from_str(&format!("parse post: {}", e)))
 }
 
-/// Fetch all posts from a user across all their epochs that we have access to.
+/// Fetch recent posts from a user (up to `limit`).
 pub async fn fetch_user_posts(
     domain: &str,
     my_domain: &str,
     my_secret: &[u8; 32],
+    limit: usize,
 ) -> Result<Vec<Post>, JsValue> {
-    let current_epoch = fetch_current_epoch(domain).await?;
-    let mut all_posts = Vec::new();
+    let content_key = fetch_key_envelope(domain, my_domain, my_secret).await?;
+    let index = fetch_post_index(domain).await?;
 
-    for epoch in 0..=current_epoch {
-        // Try to get our key for this epoch — we may not have access to all epochs
-        let content_key =
-            match fetch_key_envelope(domain, epoch, my_domain, my_secret).await {
-                Ok(key) => key,
-                Err(_) => continue, // no access to this epoch
-            };
-
-        let encrypted = fetch_encrypted_store(domain, epoch).await?;
-        let store = satproto_core::db::decrypt_store(&encrypted, &content_key)
-            .map_err(|e| JsValue::from_str(&format!("decrypt store: {}", e)))?;
-        all_posts.extend(store.get_all_posts());
+    let mut posts = Vec::new();
+    for post_id in index.posts.iter().take(limit) {
+        match fetch_post(domain, post_id, &content_key).await {
+            Ok(post) => posts.push(post),
+            Err(e) => {
+                web_sys::console::warn_1(
+                    &format!("Failed to fetch post {} from {}: {:?}", post_id, domain, e).into(),
+                );
+            }
+        }
     }
 
-    Ok(all_posts)
+    Ok(posts)
 }
