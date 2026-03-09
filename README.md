@@ -5,6 +5,8 @@ Each user owns a static website storing all their data in encrypted JSON stores.
 A WASM client running in the browser aggregates feeds and publishes posts.
 It does not rely on any servers or relays.
 
+See [Setup](#setup) to deploy a sample implementation using GitHub Pages.
+
 ## Identity
 
 A user's identity is their domain name.
@@ -182,4 +184,60 @@ private key.
     satproto_bg.wasm        # Compiled WASM module
     satproto.js             # wasm-bindgen glue
     style.css               # Minimal styling
+```
+
+## Setup
+
+Below are steps to set up a sample implementation of satproto using GitHub.
+The protocol itself is agnostic to how the site is hosted,
+ and there is plan to support other hosts in the future.
+
+### Prerequisites
+
+- [Rust](https://rustup.rs/)
+- [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
+- A GitHub repo with [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) enabled (e.g. `username/username.github.io`)
+- A GitHub [personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with `Contents: Read and write` permission on your repo
+
+### Build
+
+```bash
+git clone https://github.com/user/satproto.git
+cd satproto
+wasm-pack build crates/satproto-wasm --target web --out-dir ../../site-template/app/pkg
+```
+
+### Deploy
+
+Copy the client files to your GitHub Pages repo:
+
+```bash
+cp -r site-template/.well-known site-template/app /path/to/your-github-pages-repo/
+cd /path/to/your-github-pages-repo
+git add .well-known app
+git commit -m "Add Satellite client"
+git push
+```
+
+### First run
+
+1. Visit `https://yourdomain/app/`
+2. The WASM client generates your X25519 keypair automatically
+3. Enter your domain, GitHub repo (`owner/repo`), and token
+4. Click **Save & Initialize** — this pushes your profile, follow list, and empty encrypted store to your repo
+5. Start posting!
+
+### Following someone
+
+Enter their domain in the follow input and click **Follow**. This:
+- Fetches their public key from their `/.well-known/satproto.json`
+- Encrypts your content key for them (so they can read your posts)
+- Updates your follow list
+
+After GitHub Pages propagates (~1 min), refresh to see their posts in your feed.
+
+### Running tests
+
+```bash
+cargo test -p satproto-core
 ```
