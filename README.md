@@ -55,7 +55,7 @@ Only users in the owner's follow list can decrypt it.
   The public key is published in the discovery document.
   The private key is stored in the browser's localStorage.
 - A random **content key** (256-bit symmetric key) encrypts
-  the data store with XChaCha20-Poly1305.
+  post data with XChaCha20-Poly1305.
 - The content key is encrypted per-follower using libsodium sealed boxes
   (`crypto_box_seal` with the follower's X25519 public key).
 
@@ -63,7 +63,7 @@ Only users in the owner's follow list can decrypt it.
 
 When the user unfollows someone:
 1. Generate a new content key
-2. Re-encrypt the entire data store with the new key
+2. Re-encrypt all posts with the new key
 3. Re-create key envelopes for all remaining followers
 4. The unfollowed user's old key no longer decrypts anything
 
@@ -85,18 +85,16 @@ newest-first, allowing clients to lazily load only recent posts.
 A post object:
 
 ```json
-[
-  {
-    "id": "20260309T141500Z-a1b2",
-    "author": "alice.com",
-    "created_at": "2026-03-09T14:15:00Z",
-    "text": "Hello, decentralized world!",
-    "reply_to": null,
-    "reply_to_author": null,
-    "repost_of": null,
-    "repost_of_author": null
-  }
-]
+{
+  "id": "20260309T141500Z-a1b2",
+  "author": "alice.com",
+  "created_at": "2026-03-09T14:15:00Z",
+  "text": "Hello, decentralized world!",
+  "reply_to": null,
+  "reply_to_author": null,
+  "repost_of": null,
+  "repost_of_author": null
+}
 ```
 
 Post IDs are `{ISO8601-compact-UTC}-{4-hex-random}`, e.g. `20260309T141500Z-a1b2`.
@@ -135,7 +133,7 @@ GET https://{domain}/sat/follows/index.json
 The WASM client builds a feed by:
 1. Reading the user's follow list
 2. For each followed user, fetching their discovery document
-3. For each followed user, decrypting their database (using the key envelope
+3. For each followed user, decrypting their posts (using the key envelope
    the followed user published for this user)
 4. Merging all posts, sorted by `created_at` descending
 
@@ -218,7 +216,7 @@ git push
 1. Visit `https://yourdomain/app/`
 2. The WASM client generates your X25519 keypair automatically
 3. Enter your domain, GitHub repo (`owner/repo`), and token
-4. Click **Save & Initialize** — this pushes your profile, follow list, and empty encrypted store to your repo
+4. Click **Save & Initialize** — this pushes your profile, follow list, and empty post index to your repo
 5. Start posting!
 
 ### Following someone
