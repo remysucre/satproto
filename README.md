@@ -5,6 +5,18 @@ Each user owns a static website storing all their data in encrypted JSON stores.
 A WASM client running in the browser aggregates feeds and publishes posts.
 It does not rely on any servers or relays.
 
+In plain terms, satproto is designed for you and your friends, and no one else.
+This applies to both the technical implementation and the user experience.
+At the technical level, data only moves from your own website to your friend's browser.
+There is no servers (like Mastodon) or relays (like the AT Protocol) in the middle.
+And unlike almost all social media platform today, 
+ satproto is not designed for *influencers*.
+To see a friend's post or to have a friend see your post, you must follow *each other*^.
+Of course it is still possible for a malicious actors to crawl and follow everyone,
+ but they would probably prefer a different platform anyways.
+
+[^1]: How do you ask a friend to follow? Idk, text them. Or just ask them in person. You're friends, right?
+
 See [Setup](#setup) to deploy a sample implementation using GitHub Pages.
 
 ## Identity
