@@ -1,16 +1,16 @@
 # sAT Protocol
 
-sAT Protocol (satproto) is a decentralized social networking protocol based on static sites.
+sAT Protocol (`s@`) is a decentralized social networking protocol based on static sites.
 Each user owns a static website storing all their data in encrypted JSON stores.
 A WASM client running in the browser aggregates feeds and publishes posts.
 It does not rely on any servers or relays.
 
-In plain terms, satproto is designed for you and your friends, and no one else.
+In plain terms, `s@` is designed for you and your friends, and no one else.
 This applies to both the technical implementation and the user experience.
 At the technical level, data only moves from your own website to your friend's browser.
 There is no servers (like Mastodon) or relays (like the AT Protocol) in the middle.
 And unlike almost all social media platform today, 
- satproto is not designed for *influencers*.
+ `s@` is not designed for *influencers*.
 To see a friend's post or to have a friend see your post, you must follow *each other*^.
 Of course it is still possible for a malicious actors to crawl and follow everyone,
  but they would probably prefer a different platform anyways.
@@ -27,7 +27,7 @@ the domain owner published it.
 
 ## Discovery
 
-A satproto-enabled site exposes a discovery document at:
+A `s@`-enabled site exposes a discovery document at:
 
 ```
 GET https://{domain}/.well-known/satproto.json
@@ -182,7 +182,7 @@ private key.
 
 ## Setup
 
-Below are steps to set up a sample implementation of satproto using GitHub.
+Below are steps to set up a sample implementation of `s@` using GitHub.
 The protocol itself is agnostic to how the site is hosted,
  and there is plan to support other hosts in the future.
 
