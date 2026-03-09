@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/satproto-core", "crates/satproto-wasm"]
+resolver = "2"

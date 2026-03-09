@@ -1,0 +1,8 @@
+{
+  "satproto_version": "0.1.0",
+  "handle": "YOUR_DOMAIN_HERE",
+  "display_name": "Your Name",
+  "bio": "Hello Satellite!",
+  "public_key": "YOUR_PUBLIC_KEY_HERE",
+  "sat_root": "/sat/"
+}
