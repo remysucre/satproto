@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_encrypt_decrypt_data() {
         let key = generate_content_key();
-        let data = b"hello satellite protocol";
+        let data = b"hello satproto";
         let encrypted = encrypt_data(data, &key).unwrap();
         let decrypted = decrypt_data(&encrypted, &key).unwrap();
         assert_eq!(data.as_slice(), decrypted.as_slice());

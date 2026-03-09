@@ -1,6 +1,6 @@
 # sAT Protocol Specification v0.1.0
 
-sAT Protocol is a decentralized social networking protocol based on static sites.
+sAT Protocol (satproto) is a decentralized social networking protocol based on static sites.
 Each user owns a static website storing all their data in encrypted JSON stores.
 A WASM client running in the browser aggregates feeds and publishes posts.
 It does not rely on any servers or relays.
@@ -13,7 +13,7 @@ the domain owner published it.
 
 ## Discovery
 
-A Satellite-enabled site exposes a discovery document at:
+A satproto-enabled site exposes a discovery document at:
 
 ```
 GET https://{domain}/.well-known/satproto.json
