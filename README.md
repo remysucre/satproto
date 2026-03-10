@@ -11,7 +11,7 @@ At the technical level, data only moves from your own website to your friend's b
 There are no servers (like Mastodon) or relays (like the AT Protocol) in the middle.
 And unlike almost all social media platform today, 
  `s@` is not designed for *influencers*.
-To see a friend's post or to have a friend see your post, you must follow *each other*^.
+To see a friend's post or to have a friend see your post, you must follow *each other*[^1].
 Of course it is still possible for a malicious actors to crawl and follow everyone,
  but they would probably prefer a different platform anyways.
 
