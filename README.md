@@ -191,40 +191,25 @@ Below are steps to set up a sample implementation of `s@` using GitHub.
 The protocol itself is agnostic to how the site is hosted,
  and there is plan to support other hosts in the future.
 
-### Prerequisites
+### Quick start
 
-- [Rust](https://rustup.rs/)
-- [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
-- A GitHub repo with [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) enabled (e.g. `username/username.github.io`)
-- A GitHub [personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with `Contents: Read and write` permission on your repo
+1. Create a new repo from the [satellite template](https://github.com/remysucre/satellite)
+2. Enable [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) on the repo (use GitHub Actions as the source)
+3. Create a GitHub [personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with `Contents: Read and write` permission on your repo
+4. Visit `https://yourdomain/app/`
+5. Enter your domain, GitHub repo (`owner/repo`), and token
+6. Click **Save & Initialize** — this pushes your profile, follow list, and empty post index to your repo
+7. Start posting!
 
-### Build
+### Building from source
+
+If you want to build the WASM client yourself instead of using the template:
 
 ```bash
-git clone https://github.com/user/satproto.git
+git clone https://github.com/remysucre/satproto.git
 cd satproto
-wasm-pack build crates/satproto-wasm --target web --out-dir ../../site-template/app/pkg
+wasm-pack build crates/satproto-wasm --target web --out-dir ../../satellite/app/pkg
 ```
-
-### Deploy
-
-Copy the client files to your GitHub Pages repo:
-
-```bash
-cp -r site-template/.well-known site-template/app /path/to/your-github-pages-repo/
-cd /path/to/your-github-pages-repo
-git add .well-known app
-git commit -m "Add Satellite client"
-git push
-```
-
-### First run
-
-1. Visit `https://yourdomain/app/`
-2. The WASM client generates your X25519 keypair automatically
-3. Enter your domain, GitHub repo (`owner/repo`), and token
-4. Click **Save & Initialize** — this pushes your profile, follow list, and empty post index to your repo
-5. Start posting!
 
 ### Following someone
 

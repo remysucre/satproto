@@ -353,8 +353,9 @@ pub async fn bootstrap(domain: &str) -> Result<(), JsValue> {
         )
         .map_err(|_| "failed to store content key")?;
 
-    // Push initial files
+    // Push initial files (.nojekyll disables Jekyll so .well-known/ is served)
     let files: Vec<(&str, String)> = vec![
+        (".nojekyll", String::new()),
         (
             ".well-known/satproto.json",
             serde_json::json!({
