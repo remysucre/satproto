@@ -180,8 +180,12 @@ private key.
 
 ## Setup
 
-🚧🚧 This app is meant to demonstrate the main ideas of `s@` 🚧🚧
-🚧🚧 and is not (yet) a robust implementation                🚧🚧
+```
+🚧🚧 This app is meant to demonstrate the main ideas of s@    🚧🚧
+🚧🚧 and is not (yet) a robust implementation. In particular, 🚧🚧
+🚧🚧 each interaction is slow because it's literally making a 🚧🚧
+🚧🚧 commit to GitHub and waiting for the page to update.     🚧🚧
+```
 
 Below are steps to set up a sample implementation of `s@` using GitHub.
 The protocol itself is agnostic to how the site is hosted,
