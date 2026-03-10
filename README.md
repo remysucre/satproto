@@ -8,7 +8,7 @@ It does not rely on any servers or relays.
 In plain terms, `s@` is designed for you and your friends, and no one else.
 This applies to both the technical implementation and the user experience.
 At the technical level, data only moves from your own website to your friend's browser.
-There is no servers (like Mastodon) or relays (like the AT Protocol) in the middle.
+There are no servers (like Mastodon) or relays (like the AT Protocol) in the middle.
 And unlike almost all social media platform today, 
  `s@` is not designed for *influencers*.
 To see a friend's post or to have a friend see your post, you must follow *each other*^.
