@@ -194,7 +194,7 @@ The protocol itself is agnostic to how the site is hosted,
 ### Prerequisites
 
 - [Rust](https://rustup.rs/)
-- [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
+- [wasm-pack](https://drager.github.io/wasm-pack/)
 - A GitHub repo with [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) enabled (e.g. `username/username.github.io`)
 - A GitHub [personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with `Contents: Read and write` permission on your repo
 
