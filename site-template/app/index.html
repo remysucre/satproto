@@ -34,6 +34,7 @@
         <input type="text" id="follow-domain-input" placeholder="alice.github.io">
         <button onclick="doFollow()" id="follow-btn">Follow</button>
       </div>
+      <button onclick="reinitialize()" id="reinit-btn" class="secondary-btn">Re-initialize site</button>
       <div id="follows-list"></div>
     </div>
   </div>
@@ -75,6 +76,8 @@
         await refreshFollows(domain);
         await refreshFeed(domain);
       } else {
+        document.getElementById('main-ui').style.display = 'none';
+        document.getElementById('setup-panel').style.display = 'block';
         document.getElementById('status').textContent = 'Set up your domain and GitHub details above.';
       }
     }
@@ -218,6 +221,19 @@
     function escAttr(s) {
       return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
+
+    window.reinitialize = async function() {
+      if (!confirm('Re-initialize your site? This will overwrite your profile and reset your post index.')) return;
+      const domain = localStorage.getItem('satproto_domain');
+      document.getElementById('status').textContent = 'Re-initializing...';
+      try {
+        await bootstrap(domain);
+        document.getElementById('status').textContent = 'Site re-initialized! Write your first post or follow someone.';
+        await refreshFeed(domain);
+      } catch (e) {
+        document.getElementById('status').textContent = 'Re-initialize failed: ' + e;
+      }
+    };
 
     window.reply = async function(postId, postAuthor) {
       const text = prompt('Reply:');

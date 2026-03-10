@@ -180,6 +180,9 @@ private key.
 
 ## Setup
 
+🚧🚧 This app is meant to demonstrate the main ideas of `s@` 🚧🚧
+🚧🚧 and is not (yet) a robust implementation                🚧🚧
+
 Below are steps to set up a sample implementation of `s@` using GitHub.
 The protocol itself is agnostic to how the site is hosted,
  and there is plan to support other hosts in the future.
