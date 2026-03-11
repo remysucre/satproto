@@ -225,5 +225,5 @@ pointing to the actual repo:
 }
 ```
 
-The client will check `https://{domain}/satellite/satproto.json` first,
-and if it's not found, fall back to `https://{domain}/.satellite`.
+The client checks `https://{domain}/satellite.json` first. If not found,
+it falls back to the default `https://{domain}/satellite/satproto.json`.
