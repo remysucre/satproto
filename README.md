@@ -2,7 +2,7 @@
 
 sAT Protocol (`s@`) is a decentralized social networking protocol based on static sites.
 Each user owns a static website storing all their data in encrypted JSON stores.
-A WASM client running in the browser aggregates feeds and publishes posts.
+A client running in the browser aggregates feeds and publishes posts.
 It does not rely on any servers or relays.
 
 In plain terms, `s@` is designed for you and your friends, and no one else.
@@ -30,7 +30,7 @@ the domain owner published it.
 A `s@`-enabled site exposes a discovery document at:
 
 ```
-GET https://{domain}/.well-known/satproto.json
+GET https://{domain}/satproto.json
 ```
 
 ```json
@@ -70,7 +70,7 @@ When the user unfollows someone:
 ### Decryption Flow
 
 When Bob visits Alice's site:
-1. Fetch Alice's `/.well-known/satproto.json` to get her public key and sat_root
+1. Fetch Alice's `/satproto.json` to get her public key and sat_root
 2. Fetch `sat/keys/bob.example.com.json`
 3. Decrypt the content key using Bob's private key
 4. Fetch `sat/posts/index.json` to get the list of post IDs
@@ -130,7 +130,7 @@ GET https://{domain}/sat/follows/index.json
 
 ## Feed Aggregation
 
-The WASM client builds a feed by:
+The client builds a feed by:
 1. Reading the user's follow list
 2. For each followed user, fetching their discovery document
 3. For each followed user, decrypting their posts (using the key envelope
@@ -148,21 +148,19 @@ When viewing a post, the client scans followed users' posts for entries where
 
 ## Publishing
 
-The WASM client publishes posts by:
+The client publishes posts by:
 1. Creating a new post with a unique ID
 2. Encrypting the post JSON with the content key
 3. Pushing the encrypted post as `sat/posts/{id}.json.enc` via the GitHub Contents API
 4. Updating `sat/posts/index.json` to include the new post ID
 
-The GitHub personal access token is stored in localStorage alongside the
-private key.
+The GitHub OAuth token is stored in localStorage alongside the private key.
 
 ## Static Site Structure
 
 ```
 {domain}/
-  .well-known/
-    satproto.json           # Discovery + profile + public key
+  satproto.json             # Discovery + profile + public key
   sat/
     posts/
       index.json            # Post ID list (plaintext, newest first)
@@ -171,11 +169,6 @@ private key.
       index.json            # Follow list (unencrypted)
     keys/
       {domain}.json         # Encrypted content key per follower
-  app/
-    index.html              # WASM client shell
-    satproto_bg.wasm        # Compiled WASM module
-    satproto.js             # wasm-bindgen glue
-    style.css               # Minimal styling
 ```
 
 ## Setup
@@ -195,33 +188,17 @@ The protocol itself is agnostic to how the site is hosted,
 
 1. Create a new repo from the [satellite template](https://github.com/remysucre/satellite)
 2. Enable [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) on the repo (use GitHub Actions as the source)
-3. Create a GitHub [personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with `Contents: Read and write` permission on your repo
-4. Visit `https://yourdomain/app/`
-5. Enter your domain, GitHub repo (`owner/repo`), and token
-6. Click **Save & Initialize** — this pushes your profile, follow list, and empty post index to your repo
+3. Visit `https://yourdomain/satellite/` (or wherever your repo is served)
+4. Enter your domain and GitHub repo (`owner/repo`)
+5. Sign in with GitHub (device flow — no token needed)
+6. Click **Save & Initialize**
 7. Start posting!
-
-### Building from source
-
-If you want to build the WASM client yourself instead of using the template:
-
-```bash
-git clone https://github.com/remysucre/satproto.git
-cd satproto
-wasm-pack build crates/satproto-wasm --target web --out-dir ../../satellite/app/pkg
-```
 
 ### Following someone
 
 Enter their domain in the follow input and click **Follow**. This:
-- Fetches their public key from their `/.well-known/satproto.json`
+- Fetches their public key from their `/satproto.json`
 - Encrypts your content key for them (so they can read your posts)
 - Updates your follow list
 
 After GitHub Pages propagates (~1 min), refresh to see their posts in your feed.
-
-### Running tests
-
-```bash
-cargo test -p satproto-core
-```
