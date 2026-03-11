@@ -30,8 +30,12 @@ the domain owner published it.
 A `s@`-enabled site exposes a discovery document at:
 
 ```
-GET https://{domain}/satproto.json
+GET https://{domain}/satellite/satproto.json
 ```
+
+By convention, the client looks under `/satellite/` by default.
+If the data lives elsewhere, the `sat_root` field in the discovery document
+points to the actual location.
 
 ```json
 {
@@ -70,7 +74,7 @@ When the user unfollows someone:
 ### Decryption Flow
 
 When Bob visits Alice's site:
-1. Fetch Alice's `/satproto.json` to get her public key and sat_root
+1. Fetch Alice's `/satellite/satproto.json` to get her public key and sat_root
 2. Fetch `sat/keys/bob.example.com.json`
 3. Decrypt the content key using Bob's private key
 4. Fetch `sat/posts/index.json` to get the list of post IDs
@@ -159,7 +163,7 @@ The GitHub OAuth token is stored in localStorage alongside the private key.
 ## Static Site Structure
 
 ```
-{domain}/
+{domain}/satellite/
   satproto.json             # Discovery + profile + public key
   sat/
     posts/
@@ -188,7 +192,7 @@ The protocol itself is agnostic to how the site is hosted,
 
 1. Create a new repo from the [satellite template](https://github.com/remysucre/satellite)
 2. Enable [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) on the repo (use GitHub Actions as the source)
-3. Visit `https://yourdomain/satellite/` (or wherever your repo is served)
+3. Visit `https://yourdomain/satellite/`
 4. Enter your domain and GitHub repo (`owner/repo`)
 5. Sign in with GitHub (device flow — no token needed)
 6. Click **Save & Initialize**
@@ -197,7 +201,7 @@ The protocol itself is agnostic to how the site is hosted,
 ### Following someone
 
 Enter their domain in the follow input and click **Follow**. This:
-- Fetches their public key from their `/satproto.json`
+- Fetches their public key from their `/satellite/satproto.json`
 - Encrypts your content key for them (so they can read your posts)
 - Updates your follow list
 
