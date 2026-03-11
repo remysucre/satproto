@@ -206,3 +206,19 @@ Enter their domain in the follow input and click **Follow**. This:
 - Updates your follow list
 
 After GitHub Pages propagates (~1 min), refresh to see their posts in your feed.
+
+### Using a custom repo name
+
+By default, the client looks for data at `https://{domain}/satellite/`.
+If you name your repo something other than `satellite`, add a `satproto.json`
+file to the root of your main site (e.g. the `username.github.io` repo)
+pointing to the actual location:
+
+```json
+{
+  "sat_root": "/my-custom-repo/sat/"
+}
+```
+
+The client will check `https://{domain}/satellite/satproto.json` first,
+and if it's not found, fall back to `https://{domain}/satproto.json`.
