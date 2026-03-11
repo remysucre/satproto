@@ -195,13 +195,9 @@ The protocol itself is agnostic to how the site is hosted,
 
 ### Quick start
 
-1. Create a new repo from the [satellite template](https://github.com/remysucre/satellite)
-2. Enable [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) on the repo (use GitHub Actions as the source)
+1. Create a new repo from the [satellite template](https://github.com/remysucre/satellite) and name it `satellite` (see [below](#using-a-custom-repo-name) if you want to use another name)
+2. Enable [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) on the repo (use deploy from the `main` branch)
 3. Visit `https://yourdomain/satellite/`
-4. Enter your domain and GitHub repo (`owner/repo`)
-5. Sign in with GitHub (device flow — no token needed)
-6. Click **Save & Initialize**
-7. Start posting!
 
 ### Following someone
 
