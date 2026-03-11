@@ -34,8 +34,14 @@ GET https://{domain}/satellite/satproto.json
 ```
 
 By convention, the client looks under `/satellite/` by default.
-If the data lives elsewhere, the `sat_root` field in the discovery document
-points to the actual location.
+If the data lives in a differently-named repo, place a `satellite.json`
+file at the domain root (e.g. in the `username.github.io` repo) containing:
+
+```json
+{ "sat_repo": "my-custom-repo" }
+```
+
+The discovery document itself contains the user's profile:
 
 ```json
 {
@@ -43,8 +49,7 @@ points to the actual location.
   "handle": "alice.com",
   "display_name": "Alice",
   "bio": "Hello world",
-  "public_key": "<base64-encoded X25519 public key>",
-  "sat_root": "/sat/"
+  "public_key": "<base64-encoded X25519 public key>"
 }
 ```
 
@@ -74,7 +79,7 @@ When the user unfollows someone:
 ### Decryption Flow
 
 When Bob visits Alice's site:
-1. Fetch Alice's `/satellite/satproto.json` to get her public key and sat_root
+1. Fetch Alice's `/satellite/satproto.json` to get her public key
 2. Fetch `sat/keys/bob.example.com.json`
 3. Decrypt the content key using Bob's private key
 4. Fetch `sat/posts/index.json` to get the list of post IDs
@@ -210,15 +215,15 @@ After GitHub Pages propagates (~1 min), refresh to see their posts in your feed.
 ### Using a custom repo name
 
 By default, the client looks for data at `https://{domain}/satellite/`.
-If you name your repo something other than `satellite`, add a `satproto.json`
+If you name your repo something other than `satellite`, add a `satellite.json`
 file to the root of your main site (e.g. the `username.github.io` repo)
-pointing to the actual location:
+pointing to the actual repo:
 
 ```json
 {
-  "sat_root": "/my-custom-repo/sat/"
+  "sat_repo": "my-custom-repo"
 }
 ```
 
 The client will check `https://{domain}/satellite/satproto.json` first,
-and if it's not found, fall back to `https://{domain}/satproto.json`.
+and if it's not found, fall back to `https://{domain}/.satellite`.
